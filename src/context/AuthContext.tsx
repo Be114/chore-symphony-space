@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,34 +5,63 @@ import { supabase } from "@/integrations/supabase/client";
 type AuthContextType = {
   session: Session | null;
   user: User | null;
+  error: Error | null;
+  isLoading: boolean;
 };
 
-const AuthContext = createContext<AuthContextType>({ session: null, user: null });
+const initialState: AuthContextType = {
+  session: null,
+  user: null,
+  error: null,
+  isLoading: true,
+};
+
+const AuthContext = createContext<AuthContextType>(initialState);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [state, setState] = useState<AuthContextType>(initialState);
 
   useEffect(() => {
-    // セッションの初期化
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
+    async function initializeAuth() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
 
-    // セッションの変更を監視
+        setState({
+          session,
+          user: session?.user ?? null,
+          error: null,
+          isLoading: false,
+        });
+      } catch (error) {
+        setState(prev => ({
+          ...prev,
+          error: error as Error,
+          isLoading: false,
+        }));
+      }
+    }
+
+    initializeAuth();
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setState(prev => ({
+        ...prev,
+        session,
+        user: session?.user ?? null,
+        error: null,
+      }));
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user }}>
+    <AuthContext.Provider value={state}>
       {children}
     </AuthContext.Provider>
   );
