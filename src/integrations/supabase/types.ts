@@ -346,6 +346,33 @@ export type Database = {
         }
         Relationships: []
       }
+      todos: {
+        Row: {
+          category: string
+          completed: boolean | null
+          created_at: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
